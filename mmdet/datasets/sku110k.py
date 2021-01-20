@@ -49,7 +49,7 @@ class SKU110KDataset(CustomDataset):
         df = pd.read_csv(ann_file, names=COLUMN_NAMES)
         df = df[df['image_name'].apply(lambda img:
                                        img not in CORRUPT_IMAGES)]
-        return [{'filename': str(Path(self.img_prefix) / image_name),
+        return [{'filename': image_name,
                  'width': width,
                  'height': height,
                  'ann': {'bboxes': (group[['x1', 'y1',
