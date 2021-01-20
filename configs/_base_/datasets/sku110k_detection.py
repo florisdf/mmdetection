@@ -1,5 +1,5 @@
 dataset_type = 'SKU110KDataset'
-data_root = '/home/fdf/projects/avento/_data/SKU110K/'
+data_root = 'data/SKU110K/'
 img_norm_cfg = dict(
     mean=[123.675, 116.28, 103.53], std=[58.395, 57.12, 57.375], to_rgb=True)
 train_pipeline = [
@@ -28,7 +28,7 @@ test_pipeline = [
         ])
 ]
 data = dict(
-    samples_per_gpu=1,
+    samples_per_gpu=2,
     workers_per_gpu=2,
     train=dict(
         type=dataset_type,
@@ -52,3 +52,4 @@ data = dict(
         pipeline=test_pipeline
     )
 )
+evaluation = dict(interval=1, metric='bbox')
