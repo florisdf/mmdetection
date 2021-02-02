@@ -5,18 +5,21 @@ from .custom import CustomDataset
 from .dataset_wrappers import (ClassBalancedDataset, ConcatDataset,
                                RepeatDataset)
 from .deepfashion import DeepFashionDataset
-from .lvis import LVISDataset
+from .lvis import LVISDataset, LVISV1Dataset, LVISV05Dataset
 from .samplers import DistributedGroupSampler, DistributedSampler, GroupSampler
+from .utils import (NumClassCheckHook, get_loading_pipeline,
+                    replace_ImageToTensor)
 from .voc import VOCDataset
 from .wider_face import WIDERFaceDataset
 from .xml_style import XMLDataset
 from .sku110k import SKU110KDataset
 
 __all__ = [
-    'SKU110KDataset', 'CustomDataset', 'XMLDataset', 'CocoDataset',
-    'DeepFashionDataset', 'VOCDataset', 'CityscapesDataset', 'LVISDataset',
-    'GroupSampler', 'DistributedGroupSampler', 'DistributedSampler',
-    'build_dataloader', 'ConcatDataset', 'RepeatDataset',
+    'CustomDataset', 'XMLDataset', 'CocoDataset', 'DeepFashionDataset',
+    'VOCDataset', 'CityscapesDataset', 'LVISDataset', 'LVISV05Dataset',
+    'LVISV1Dataset', 'GroupSampler', 'DistributedGroupSampler',
+    'DistributedSampler', 'build_dataloader', 'ConcatDataset', 'RepeatDataset',
     'ClassBalancedDataset', 'WIDERFaceDataset', 'DATASETS', 'PIPELINES',
-    'build_dataset'
+    'build_dataset', 'replace_ImageToTensor', 'get_loading_pipeline',
+    'NumClassCheckHook', 'SKU110KDataset'
 ]

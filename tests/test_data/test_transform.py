@@ -84,14 +84,26 @@ def test_flip():
     with pytest.raises(AssertionError):
         transform = dict(type='RandomFlip', flip_ratio=1.5)
         build_from_cfg(transform, PIPELINES)
+    # test assertion for 0 <= sum(flip_ratio) <= 1
+    with pytest.raises(AssertionError):
+        transform = dict(
+            type='RandomFlip',
+            flip_ratio=[0.7, 0.8],
+            direction=['horizontal', 'vertical'])
+        build_from_cfg(transform, PIPELINES)
+
+    # test assertion for mismatch between number of flip_ratio and direction
+    with pytest.raises(AssertionError):
+        transform = dict(type='RandomFlip', flip_ratio=[0.4, 0.5])
+        build_from_cfg(transform, PIPELINES)
 
     # test assertion for invalid direction
     with pytest.raises(AssertionError):
         transform = dict(
-            type='RandomFlip', flip_ratio=1, direction='horizonta')
+            type='RandomFlip', flip_ratio=1., direction='horizonta')
         build_from_cfg(transform, PIPELINES)
 
-    transform = dict(type='RandomFlip', flip_ratio=1)
+    transform = dict(type='RandomFlip', flip_ratio=1.)
     flip_module = build_from_cfg(transform, PIPELINES)
 
     results = dict()
@@ -114,6 +126,58 @@ def test_flip():
     results = flip_module(results)
     assert np.equal(results['img'], results['img2']).all()
     assert np.equal(original_img, results['img']).all()
+
+    # test flip_ratio is float, direction is list
+    transform = dict(
+        type='RandomFlip',
+        flip_ratio=0.9,
+        direction=['horizontal', 'vertical', 'diagonal'])
+    flip_module = build_from_cfg(transform, PIPELINES)
+
+    results = dict()
+    img = mmcv.imread(
+        osp.join(osp.dirname(__file__), '../data/color.jpg'), 'color')
+    original_img = copy.deepcopy(img)
+    results['img'] = img
+    results['img_shape'] = img.shape
+    results['ori_shape'] = img.shape
+    # Set initial values for default meta_keys
+    results['pad_shape'] = img.shape
+    results['scale_factor'] = 1.0
+    results['img_fields'] = ['img']
+    results = flip_module(results)
+    if results['flip']:
+        assert np.array_equal(
+            mmcv.imflip(original_img, results['flip_direction']),
+            results['img'])
+    else:
+        assert np.array_equal(original_img, results['img'])
+
+    # test flip_ratio is list, direction is list
+    transform = dict(
+        type='RandomFlip',
+        flip_ratio=[0.3, 0.3, 0.2],
+        direction=['horizontal', 'vertical', 'diagonal'])
+    flip_module = build_from_cfg(transform, PIPELINES)
+
+    results = dict()
+    img = mmcv.imread(
+        osp.join(osp.dirname(__file__), '../data/color.jpg'), 'color')
+    original_img = copy.deepcopy(img)
+    results['img'] = img
+    results['img_shape'] = img.shape
+    results['ori_shape'] = img.shape
+    # Set initial values for default meta_keys
+    results['pad_shape'] = img.shape
+    results['scale_factor'] = 1.0
+    results['img_fields'] = ['img']
+    results = flip_module(results)
+    if results['flip']:
+        assert np.array_equal(
+            mmcv.imflip(original_img, results['flip_direction']),
+            results['img'])
+    else:
+        assert np.array_equal(original_img, results['img'])
 
 
 def test_random_crop():
@@ -162,6 +226,81 @@ def test_random_crop():
 
     assert (area(results['gt_bboxes']) <= area(gt_bboxes)).all()
     assert (area(results['gt_bboxes_ignore']) <= area(gt_bboxes_ignore)).all()
+
+    # test assertion for invalid crop_type
+    with pytest.raises(ValueError):
+        transform = dict(
+            type='RandomCrop', crop_size=(1, 1), crop_type='unknown')
+        build_from_cfg(transform, PIPELINES)
+
+    # test assertion for invalid crop_size
+    with pytest.raises(AssertionError):
+        transform = dict(
+            type='RandomCrop', crop_type='relative', crop_size=(0, 0))
+        build_from_cfg(transform, PIPELINES)
+
+    def _construct_toy_data():
+        img = np.array([[1, 2, 3, 4], [5, 6, 7, 8]], dtype=np.uint8)
+        img = np.stack([img, img, img], axis=-1)
+        results = dict()
+        # image
+        results['img'] = img
+        results['img_shape'] = img.shape
+        results['img_fields'] = ['img']
+        # bboxes
+        results['bbox_fields'] = ['gt_bboxes', 'gt_bboxes_ignore']
+        results['gt_bboxes'] = np.array([[0., 0., 2., 1.]], dtype=np.float32)
+        results['gt_bboxes_ignore'] = np.array([[2., 0., 3., 1.]],
+                                               dtype=np.float32)
+        # labels
+        results['gt_labels'] = np.array([1], dtype=np.int64)
+        return results
+
+    # test crop_type "relative_range"
+    results = _construct_toy_data()
+    transform = dict(
+        type='RandomCrop',
+        crop_type='relative_range',
+        crop_size=(0.3, 0.7),
+        allow_negative_crop=True)
+    transform_module = build_from_cfg(transform, PIPELINES)
+    results_transformed = transform_module(copy.deepcopy(results))
+    h, w = results_transformed['img_shape'][:2]
+    assert int(2 * 0.3 + 0.5) <= h <= int(2 * 1 + 0.5)
+    assert int(4 * 0.7 + 0.5) <= w <= int(4 * 1 + 0.5)
+
+    # test crop_type "relative"
+    transform = dict(
+        type='RandomCrop',
+        crop_type='relative',
+        crop_size=(0.3, 0.7),
+        allow_negative_crop=True)
+    transform_module = build_from_cfg(transform, PIPELINES)
+    results_transformed = transform_module(copy.deepcopy(results))
+    h, w = results_transformed['img_shape'][:2]
+    assert h == int(2 * 0.3 + 0.5) and w == int(4 * 0.7 + 0.5)
+
+    # test crop_type "absolute"
+    transform = dict(
+        type='RandomCrop',
+        crop_type='absolute',
+        crop_size=(1, 2),
+        allow_negative_crop=True)
+    transform_module = build_from_cfg(transform, PIPELINES)
+    results_transformed = transform_module(copy.deepcopy(results))
+    h, w = results_transformed['img_shape'][:2]
+    assert h == 1 and w == 2
+
+    # test crop_type "absolute_range"
+    transform = dict(
+        type='RandomCrop',
+        crop_type='absolute_range',
+        crop_size=(1, 20),
+        allow_negative_crop=True)
+    transform_module = build_from_cfg(transform, PIPELINES)
+    results_transformed = transform_module(copy.deepcopy(results))
+    h, w = results_transformed['img_shape'][:2]
+    assert 1 <= h <= 2 and 1 <= w <= 4
 
 
 def test_min_iou_random_crop():
@@ -545,3 +684,69 @@ def test_multi_scale_flip_aug():
     assert results['img_metas'][0].data['scale_factor'].tolist() == [
         2.603515625, 2.6041667461395264, 2.603515625, 2.6041667461395264
     ]
+
+
+def test_cutout():
+    # test n_holes
+    with pytest.raises(AssertionError):
+        transform = dict(type='CutOut', n_holes=(5, 3), cutout_shape=(8, 8))
+        build_from_cfg(transform, PIPELINES)
+    with pytest.raises(AssertionError):
+        transform = dict(type='CutOut', n_holes=(3, 4, 5), cutout_shape=(8, 8))
+        build_from_cfg(transform, PIPELINES)
+    # test cutout_shape and cutout_ratio
+    with pytest.raises(AssertionError):
+        transform = dict(type='CutOut', n_holes=1, cutout_shape=8)
+        build_from_cfg(transform, PIPELINES)
+    with pytest.raises(AssertionError):
+        transform = dict(type='CutOut', n_holes=1, cutout_ratio=0.2)
+        build_from_cfg(transform, PIPELINES)
+    # either of cutout_shape and cutout_ratio should be given
+    with pytest.raises(AssertionError):
+        transform = dict(type='CutOut', n_holes=1)
+        build_from_cfg(transform, PIPELINES)
+    with pytest.raises(AssertionError):
+        transform = dict(
+            type='CutOut',
+            n_holes=1,
+            cutout_shape=(2, 2),
+            cutout_ratio=(0.4, 0.4))
+        build_from_cfg(transform, PIPELINES)
+
+    results = dict()
+    img = mmcv.imread(
+        osp.join(osp.dirname(__file__), '../data/color.jpg'), 'color')
+
+    results['img'] = img
+    results['img_shape'] = img.shape
+    results['ori_shape'] = img.shape
+    results['pad_shape'] = img.shape
+    results['img_fields'] = ['img']
+
+    transform = dict(type='CutOut', n_holes=1, cutout_shape=(10, 10))
+    cutout_module = build_from_cfg(transform, PIPELINES)
+    cutout_result = cutout_module(copy.deepcopy(results))
+    assert cutout_result['img'].sum() < img.sum()
+
+    transform = dict(type='CutOut', n_holes=1, cutout_ratio=(0.8, 0.8))
+    cutout_module = build_from_cfg(transform, PIPELINES)
+    cutout_result = cutout_module(copy.deepcopy(results))
+    assert cutout_result['img'].sum() < img.sum()
+
+    transform = dict(
+        type='CutOut',
+        n_holes=(2, 4),
+        cutout_shape=[(10, 10), (15, 15)],
+        fill_in=(255, 255, 255))
+    cutout_module = build_from_cfg(transform, PIPELINES)
+    cutout_result = cutout_module(copy.deepcopy(results))
+    assert cutout_result['img'].sum() > img.sum()
+
+    transform = dict(
+        type='CutOut',
+        n_holes=1,
+        cutout_ratio=(0.8, 0.8),
+        fill_in=(255, 255, 255))
+    cutout_module = build_from_cfg(transform, PIPELINES)
+    cutout_result = cutout_module(copy.deepcopy(results))
+    assert cutout_result['img'].sum() > img.sum()

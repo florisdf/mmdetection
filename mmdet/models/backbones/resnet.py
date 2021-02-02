@@ -262,7 +262,6 @@ class Bottleneck(nn.Module):
 
         def _inner_forward(x):
             identity = x
-
             out = self.conv1(x)
             out = self.norm1(out)
             out = self.relu(out)
@@ -306,7 +305,8 @@ class ResNet(nn.Module):
 
     Args:
         depth (int): Depth of resnet, from {18, 34, 50, 101, 152}.
-        stem_channels (int): Number of stem channels. Default: 64.
+        stem_channels (int | None): Number of stem channels. If not specified,
+            it will be the same as `base_channels`. Default: None.
         base_channels (int): Number of base channels of res layer. Default: 64.
         in_channels (int): Number of input image channels. Default: 3.
         num_stages (int): Resnet stages. Default: 4.
@@ -363,7 +363,7 @@ class ResNet(nn.Module):
     def __init__(self,
                  depth,
                  in_channels=3,
-                 stem_channels=64,
+                 stem_channels=None,
                  base_channels=64,
                  num_stages=4,
                  strides=(1, 2, 2, 2),
@@ -385,6 +385,8 @@ class ResNet(nn.Module):
         if depth not in self.arch_settings:
             raise KeyError(f'invalid depth {depth} for resnet')
         self.depth = depth
+        if stem_channels is None:
+            stem_channels = base_channels
         self.stem_channels = stem_channels
         self.base_channels = base_channels
         self.num_stages = num_stages

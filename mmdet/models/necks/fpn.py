@@ -1,17 +1,19 @@
+import warnings
+
 import torch.nn as nn
 import torch.nn.functional as F
 from mmcv.cnn import ConvModule, xavier_init
+from mmcv.runner import auto_fp16
 
-from mmdet.core import auto_fp16
 from ..builder import NECKS
 
 
 @NECKS.register_module()
 class FPN(nn.Module):
-    """Feature Pyramid Network.
+    r"""Feature Pyramid Network.
 
-    This is an implementation of - Feature Pyramid Networks for Object
-    Detection (https://arxiv.org/abs/1612.03144)
+    This is an implementation of paper `Feature Pyramid Networks for Object
+    Detection <https://arxiv.org/abs/1612.03144>`_.
 
     Args:
         in_channels (List[int]): Number of input channels per scale.
@@ -103,8 +105,11 @@ class FPN(nn.Module):
             assert add_extra_convs in ('on_input', 'on_lateral', 'on_output')
         elif add_extra_convs:  # True
             if extra_convs_on_inputs:
-                # For compatibility with previous release
                 # TODO: deprecate `extra_convs_on_inputs`
+                warnings.simplefilter('once')
+                warnings.warn(
+                    '"extra_convs_on_inputs" will be deprecated in v2.9.0,'
+                    'Please use "add_extra_convs"', DeprecationWarning)
                 self.add_extra_convs = 'on_input'
             else:
                 self.add_extra_convs = 'on_output'
