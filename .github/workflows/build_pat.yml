@@ -1,6 +1,9 @@
 name: build_pat
 
-on: push
+on:
+  push:
+    branches:
+      - main
 
 jobs:
   build_parrots:
